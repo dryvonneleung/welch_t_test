@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Welch t-test visualizer</title>
+<title>Equal variances and the Welch t-test</title>
 <style>
 :root{--bg:#ffffff;--surface:#ffffff;--neutral:#f1f4f4;--text:#1f2a2e;--text2:#4a5a5e;--muted:#7b8a8c;--border:rgba(31,42,46,.14);--border-strong:rgba(31,42,46,.30);--danger:#b3261e;--g1:#2a78d6;--g2:#eb6834;--tail:#e34948;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14191a;--surface:#1b2224;--neutral:#232c2e;--text:#eef2f2;--text2:#b6c3c5;--muted:#8a999b;--border:rgba(255,255,255,.14);--border-strong:rgba(255,255,255,.30);--danger:#ff8a80;--g1:#3987e5;--g2:#f07a4a;color-scheme:dark}}
@@ -29,6 +29,8 @@ select{font:inherit;color:var(--text);background:var(--surface);border:1px solid
 .m p{margin:0}.m .l{font-size:12px;color:var(--text2)}.m .v{font-size:20px;font-weight:600}
 #decision{font-size:16px;font-weight:600;margin:0}
 .note{color:var(--muted);font-size:13px;margin-top:18px}
+.step{font-size:18px;font-weight:600;margin:26px 0 4px}
+.hint{color:var(--text2);font-size:14px;margin:0 0 8px}
 svg{display:block;width:100%;height:auto}
 svg text{font-family:inherit}
 .t2{fill:var(--text2)}.tm{fill:var(--muted)}.tp{fill:var(--text)}
@@ -37,8 +39,8 @@ svg text{font-family:inherit}
 </head>
 <body>
 <main>
-<h1>Welch's t-test visualizer</h1>
-<p class="sub">Change the two groups and watch the t statistic, degrees of freedom and p-value update. The starting values are the East vs West delivery-time example.</p>
+<h1>Equal variances and the Welch t-test</h1>
+<p class="sub">Change the two groups. Step 1 checks whether the variances are equal; step 2 compares the means. The starting values are the East vs West delivery-time example.</p>
 <div class="grid2">
   <div class="grp"><h2><span class="sw" style="background:var(--g1)"></span>Group 1 (East)</h2>
     <div class="row"><label for="n1">Sample size</label><input type="range" id="n1" min="5" max="200" step="1" value="40"><span id="n1o"></span></div>
@@ -51,6 +53,20 @@ svg text{font-family:inherit}
     <div class="row"><label for="s2">Std dev</label><input type="range" id="s2" min="0.2" max="2" step="0.05" value="0.8"><span id="s2o"></span></div>
   </div>
 </div>
+<h2 class="step">1. Are the variances equal?</h2>
+<p class="hint">F test: compare the ratio of the two sample variances with an F distribution (df = n1 − 1 and n2 − 1).</p>
+<div id="svgV"></div>
+<div id="svgF"></div>
+<div class="mgrid">
+  <div class="m"><p class="l">Variance 1 (s1²)</p><p class="v" id="v-s1"></p></div>
+  <div class="m"><p class="l">Variance 2 (s2²)</p><p class="v" id="v-s2"></p></div>
+  <div class="m"><p class="l">F = s1² / s2²</p><p class="v" id="v-f"></p></div>
+  <div class="m"><p class="l">df (num, den)</p><p class="v" id="v-df"></p></div>
+  <div class="m"><p class="l">p-value (two-sided)</p><p class="v" id="v-p"></p></div>
+  <div class="m"><p class="l">F not significant between</p><p class="v" id="v-range" style="font-size:16px"></p></div>
+</div>
+<p id="vdecision" style="font-size:15px;font-weight:600;margin:0"></p>
+<h2 class="step">2. Compare the means</h2>
 <div class="alt"><label for="tail">Alternative</label>
   <select id="tail"><option value="two">Two-sided (μ1 ≠ μ2)</option><option value="right">One-sided (μ1 &gt; μ2)</option></select>
 </div>
@@ -58,14 +74,17 @@ svg text{font-family:inherit}
 <div id="svgB"></div>
 <div class="mgrid">
   <div class="m"><p class="l">Difference</p><p class="v" id="o-diff"></p></div>
-  <div class="m"><p class="l">Std error</p><p class="v" id="o-se"></p></div>
-  <div class="m"><p class="l">t statistic</p><p class="v" id="o-t"></p></div>
+  <div class="m"><p class="l">Std error (Welch)</p><p class="v" id="o-se"></p></div>
+  <div class="m"><p class="l">t statistic (Welch)</p><p class="v" id="o-t"></p></div>
   <div class="m"><p class="l">Welch df</p><p class="v" id="o-df"></p></div>
-  <div class="m"><p class="l">p-value</p><p class="v" id="o-p"></p></div>
+  <div class="m"><p class="l">p-value (Welch)</p><p class="v" id="o-p"></p></div>
   <div class="m"><p class="l">95% CI for difference</p><p class="v" id="o-ci" style="font-size:16px"></p></div>
+  <div class="m"><p class="l">Pooled t (df = n1 + n2 − 2)</p><p class="v" id="o-pt"></p></div>
+  <div class="m"><p class="l">p-value (pooled)</p><p class="v" id="o-pp"></p></div>
 </div>
-<p id="decision"></p>
-<p class="note">Welch’s test does not assume equal variances: SE = √(s1²/n1 + s2²/n2), df ≈ Satterthwaite.</p>
+<p id="decision" style="font-size:16px;font-weight:600;margin:0"></p>
+<p id="compare" class="hint" style="margin-top:6px"></p>
+<p class="note">ALY 6115 · Module 4 · Welch’s test does not assume equal variances: SE = √(s1²/n1 + s2²/n2), df ≈ Satterthwaite. The F test assumes normal data and is sensitive to skew; Levene’s test is more robust.</p>
 </main>
 <script>
 function lg(x){var c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];var y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);var s=1.000000000190015;for(var j=0;j<6;j++){y+=1;s+=c[j]/y}return -t+Math.log(2.5066282746310005*s/x)}
@@ -74,10 +93,47 @@ function ib(x,a,b){if(x<=0)return 0;if(x>=1)return 1;var bt=Math.exp(lg(a+b)-lg(
 function tcdf(t,df){var p=0.5*ib(df/(df+t*t),df/2,0.5);return t>0?1-p:p}
 function tpdf(t,df){return Math.exp(lg((df+1)/2)-lg(df/2))/Math.sqrt(df*Math.PI)*Math.pow(1+t*t/df,-(df+1)/2)}
 function tcrit(df,q){var lo=0,hi=50;for(var i=0;i<80;i++){var mid=(lo+hi)/2;if(tcdf(mid,df)<q)lo=mid;else hi=mid}return (lo+hi)/2}
+function fcdf(x,d1,d2){if(x<=0)return 0;return ib(d1*x/(d1*x+d2),d1/2,d2/2)}
+function fpdf(x,d1,d2){if(x<=0)return 0;var lp=0.5*(d1*Math.log(d1*x)+d2*Math.log(d2)-(d1+d2)*Math.log(d1*x+d2))-Math.log(x)-(lg(d1/2)+lg(d2/2)-lg((d1+d2)/2));return Math.exp(lp)}
+function fq(q,d1,d2){var lo=-20,hi=12;for(var i=0;i<90;i++){var mid=(lo+hi)/2;if(fcdf(Math.exp(mid),d1,d2)<q)lo=mid;else hi=mid}return Math.exp((lo+hi)/2)}
 function npdf(x,m,s){return Math.exp(-0.5*Math.pow((x-m)/s,2))/(s*Math.sqrt(2*Math.PI))}
 var $=function(id){return document.getElementById(id)};
 var f=function(v,d){return Number(v).toFixed(d)};
 function pathFor(xs,ys,X,Y){return xs.map(function(x,i){return (i?'L':'M')+X(x).toFixed(1)+','+Y(ys[i]).toFixed(1)}).join(' ')}
+function updateVar(n1,s1,n2,s2){
+  var v1=s1*s1,v2=s2*s2,F=v1/v2,d1=n1-1,d2=n2-1;
+  var cdf=fcdf(F,d1,d2),p=Math.min(1,2*Math.min(cdf,1-cdf)),flo=fq(0.025,d1,d2),fhi=fq(0.975,d1,d2);
+  $('v-s1').textContent=f(v1,2);$('v-s2').textContent=f(v2,2);$('v-f').textContent=f(F,2);$('v-df').textContent=d1+', '+d2;
+  $('v-p').textContent=p<0.001?'<0.001':f(p,3);$('v-range').textContent=f(flo,2)+' to '+f(fhi,2);
+  var differ=p<0.05;
+  $('vdecision').textContent=differ?'Variances differ (p < 0.05): use Welch, not the pooled test.':'No clear evidence the variances differ (p ≥ 0.05): pooled and Welch should agree closely. Welch is still the safe default.';
+  $('vdecision').style.color=differ?'var(--danger)':'var(--text2)';
+  var W=640,L=20,R=620;
+  var mx=Math.max(v1,v2),V='<svg viewBox="0 0 '+W+' 84" role="img" aria-label="Bar chart comparing the two sample variances"><title>Sample variances</title>';
+  var bw=function(v){return Math.max(2,v/mx*400)};
+  V+='<text x="'+L+'" y="30" font-size="13" class="t2">Group 1</text><rect x="100" y="14" width="'+bw(v1)+'" height="24" rx="4" style="fill:var(--g1)"/><text x="'+(100+bw(v1)+8)+'" y="31" font-size="13" font-weight="600" class="tp">s1² = '+f(v1,2)+'</text>';
+  V+='<text x="'+L+'" y="66" font-size="13" class="t2">Group 2</text><rect x="100" y="50" width="'+bw(v2)+'" height="24" rx="4" style="fill:var(--g2)"/><text x="'+(100+bw(v2)+8)+'" y="67" font-size="13" font-weight="600" class="tp">s2² = '+f(v2,2)+'</text>';
+  V+='</svg>';$('svgV').innerHTML=V;
+  var H=186,T=34,B=156,ulo=-Math.log(10),uhi=Math.log(10);
+  var X=function(u){return L+(u-ulo)/(uhi-ulo)*(R-L)};
+  var us=[];for(var i=0;i<=240;i++)us.push(ulo+(uhi-ulo)*i/240);
+  var g=us.map(function(u){return fpdf(Math.exp(u),d1,d2)*Math.exp(u)});
+  var pk=Math.max.apply(null,g),Y=function(y){return B-y/pk*(B-T-14)};
+  var lobs=Math.max(ulo,Math.min(uhi,Math.log(F)));
+  var upper=cdf>0.5;
+  var Fs='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="F distribution with the p-value tail shaded"><title>F distribution</title>';
+  Fs+='<text x="'+L+'" y="12" font-size="12" class="t2">F distribution with ('+d1+', '+d2+') df if variances are equal (log scale; shaded = tail beyond observed F)</text>';
+  Fs+='<path d="'+pathFor(us,g,X,Y)+'" fill="none" class="cv" stroke-width="2"/>';
+  var pts=[],yy=[];for(var j=0;j<us.length;j++){if(upper?us[j]>=lobs:us[j]<=lobs){pts.push(us[j]);yy.push(g[j])}}
+  if(pts.length>1){Fs+='<path d="'+pathFor(pts,yy,X,Y)+' L'+X(pts[pts.length-1])+','+B+' L'+X(pts[0])+','+B+'Z" style="fill:var(--tail);fill-opacity:.35"/>'}
+  var cl=Math.max(ulo,Math.min(uhi,Math.log(flo))),ch=Math.max(ulo,Math.min(uhi,Math.log(fhi)));
+  Fs+='<line x1="'+X(cl)+'" x2="'+X(cl)+'" y1="'+(T+22)+'" y2="'+B+'" class="gm" stroke-dasharray="3 3"/><line x1="'+X(ch)+'" x2="'+X(ch)+'" y1="'+(T+22)+'" y2="'+B+'" class="gm" stroke-dasharray="3 3"/>';
+  Fs+='<text x="'+X(cl)+'" y="'+(T+32)+'" font-size="11" class="tm" text-anchor="end" dx="-4">'+f(flo,2)+'</text><text x="'+X(ch)+'" y="'+(T+32)+'" font-size="11" class="tm" dx="4">'+f(fhi,2)+'</text>';
+  Fs+='<line x1="'+X(lobs)+'" x2="'+X(lobs)+'" y1="'+(T+6)+'" y2="'+B+'" class="tpk" stroke-width="2"/><text x="'+X(lobs)+'" y="'+(T+2)+'" font-size="12" font-weight="600" text-anchor="middle" class="tp">F = '+f(F,2)+'</text>';
+  Fs+='<line x1="'+L+'" x2="'+R+'" y1="'+B+'" y2="'+B+'" class="ax"/>';
+  [0.1,0.25,0.5,1,2,4,10].forEach(function(k){Fs+='<text x="'+X(Math.log(k))+'" y="'+(B+16)+'" font-size="11" text-anchor="middle" class="tm">'+k+'</text>'});
+  Fs+='</svg>';$('svgF').innerHTML=Fs;
+}
 function update(){
   var n1=+$('n1').value,m1=+$('m1').value,s1=+$('s1').value,n2=+$('n2').value,m2=+$('m2').value,s2=+$('s2').value,tail=$('tail').value;
   $('n1o').textContent=n1;$('n2o').textContent=n2;$('m1o').textContent=f(m1,2);$('m2o').textContent=f(m2,2);$('s1o').textContent=f(s1,2);$('s2o').textContent=f(s2,2);
@@ -87,6 +143,11 @@ function update(){
   var tc=tcrit(df,0.975),lo=diff-tc*se,hi=diff+tc*se;
   $('o-diff').textContent=f(diff,2);$('o-se').textContent=f(se,3);$('o-t').textContent=f(t,2);$('o-df').textContent=f(df,1);
   $('o-p').textContent=p<0.001?'<0.001':f(p,3);$('o-ci').textContent=f(lo,2)+' to '+f(hi,2);
+  var sp2=((n1-1)*s1*s1+(n2-1)*s2*s2)/(n1+n2-2),sep=Math.sqrt(sp2*(1/n1+1/n2)),tp=diff/sep,dfp=n1+n2-2;
+  var pp=tail==='two'?2*(1-tcdf(Math.abs(tp),dfp)):1-tcdf(tp,dfp);
+  $('o-pt').textContent=f(tp,2);$('o-pp').textContent=pp<0.001?'<0.001':f(pp,3);
+  $('compare').textContent='Welch p = '+(p<0.001?'<0.001':f(p,3))+' vs pooled p = '+(pp<0.001?'<0.001':f(pp,3))+'. The gap between them grows when the variances and the sample sizes are both unequal.';
+  updateVar(n1,s1,n2,s2);
   var rej=p<0.05;
   $('decision').textContent=(rej?'Reject H0 at α = 0.05: ':'Fail to reject H0 at α = 0.05: ')+(tail==='two'?'the means differ by ':'group 1 exceeds group 2 by ')+f(Math.abs(diff),2)+' units, '+(rej?'a gap too large to blame on chance.':'a gap chance alone could easily produce.');
   $('decision').style.color=rej?'var(--danger)':'var(--text2)';
@@ -115,7 +176,7 @@ function update(){
   if(tail==='two'){Bs+=area(Math.abs(obs),tmax)+area(-tmax,-Math.abs(obs))}else{Bs+=area(obs,tmax)}
   var cr=Math.min(tc,tmax);
   Bs+='<line x1="'+X2(cr)+'" x2="'+X2(cr)+'" y1="'+(T+20)+'" y2="'+B+'" class="gm" stroke-dasharray="3 3"/><line x1="'+X2(-cr)+'" x2="'+X2(-cr)+'" y1="'+(T+20)+'" y2="'+B+'" class="gm" stroke-dasharray="3 3"/>';
-  Bs+='<text x="'+X2(cr)+'" y="'+(T+30)+'" font-size="11" class="tm" dx="4">±t* = '+f(tc,2)+'</text>';
+  Bs+='<text x="'+X2(-cr)+'" y="'+(T+30)+'" font-size="11" class="tm" text-anchor="end" dx="-4">±t* = '+f(tc,2)+'</text>';
   Bs+='<line x1="'+X2(obs)+'" x2="'+X2(obs)+'" y1="'+(T+6)+'" y2="'+B+'" class="tpk" stroke-width="2"/><text x="'+X2(obs)+'" y="'+(T+2)+'" font-size="12" font-weight="600" text-anchor="middle" class="tp">t = '+f(t,2)+'</text>';
   Bs+='<line x1="'+L+'" x2="'+R+'" y1="'+B+'" y2="'+B+'" class="ax"/>';
   for(var q=-4;q<=4;q+=2){Bs+='<text x="'+X2(q)+'" y="'+(B+16)+'" font-size="11" text-anchor="middle" class="tm">'+q+'</text>'}
