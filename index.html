@@ -37,7 +37,7 @@ svg text{font-family:inherit}
 </head>
 <body>
 <main>
-<h1>Welch t-test visualizer</h1>
+<h1>Welch's t-test visualizer</h1>
 <p class="sub">Change the two groups and watch the t statistic, degrees of freedom and p-value update. The starting values are the East vs West delivery-time example.</p>
 <div class="grid2">
   <div class="grp"><h2><span class="sw" style="background:var(--g1)"></span>Group 1 (East)</h2>
@@ -65,7 +65,7 @@ svg text{font-family:inherit}
   <div class="m"><p class="l">95% CI for difference</p><p class="v" id="o-ci" style="font-size:16px"></p></div>
 </div>
 <p id="decision"></p>
-<p class="note">ALY 6115 · Module 4 · Welch’s test does not assume equal variances: SE = √(s1²/n1 + s2²/n2), df ≈ Satterthwaite.</p>
+<p class="note">Welch’s test does not assume equal variances: SE = √(s1²/n1 + s2²/n2), df ≈ Satterthwaite.</p>
 </main>
 <script>
 function lg(x){var c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];var y=x,t=x+5.5;t-=(x+0.5)*Math.log(t);var s=1.000000000190015;for(var j=0;j<6;j++){y+=1;s+=c[j]/y}return -t+Math.log(2.5066282746310005*s/x)}
